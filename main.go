@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/noah-blockchain/Auto-rewards/app"
@@ -9,21 +9,18 @@ import (
 )
 
 func main() {
-
-	walletFrom, err := wallet.NewWallet([]byte(os.Getenv("SEED_PHRASE")))
+	seed, _ := wallet.Seed(os.Getenv("SEED_PHRASE"))
+	walletFrom, err := wallet.NewWallet(seed)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Panicln(err)
 	}
 
 	multiSend, err := app.CreateMultiSendList(walletFrom.Address(), "NOAH")
 	if err != nil || multiSend == nil {
-		fmt.Println(err)
-		return
+		log.Panicln(err)
 	}
 
 	if err = app.SendMultiAccounts(walletFrom, *multiSend, "Payment from app", "NOAH"); err != nil {
-		fmt.Println(err)
-		return
+		log.Panicln(err)
 	}
 }

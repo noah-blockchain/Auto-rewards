@@ -1,6 +1,8 @@
 package utils
 
-import "math/big"
+import (
+	"math/big"
+)
 
 func FloatToBigInt(val float64) *big.Int {
 	bigval := new(big.Float)

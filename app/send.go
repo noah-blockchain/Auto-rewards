@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -29,7 +28,7 @@ func SendMultiAccounts(walletFrom *wallet.Wallet, dict []models.MultiSendItem, p
 		)
 	}
 
-	signedTx, err := transaction.NewBuilder(transaction.TestNetChainID).NewTransaction(tx)
+	signedTx, err := transaction.NewBuilder(transaction.MainNetChainID).NewTransaction(tx)
 	if err != nil {
 		return err
 	}
@@ -40,18 +39,16 @@ func SendMultiAccounts(walletFrom *wallet.Wallet, dict []models.MultiSendItem, p
 		return err
 	}
 
-	res, err := nodeAPI.Send(finishedTx)
+	res, err := nodeAPI.SendTransaction(finishedTx)
 	if err != nil {
 		return err
 	}
 
-	if res.Error.Code != 0 {
-		return errors.New(res.Error.Message)
-	}
 
-	fmt.Println(res.Result.Hash)
-	fmt.Println(res.Result.Data)
-	fmt.Println(res.Result.Log)
+	fmt.Println(res.Hash)
+	fmt.Println(res.Data)
+	fmt.Println(res.Log)
+	fmt.Println(res)
 
 	return nil
 }

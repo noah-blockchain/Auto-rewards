@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/Auto-rewards/utils"
@@ -109,7 +110,16 @@ func GetAllDelegators() (map[string]float64, error) {
 	return allDelegators, nil
 }
 
+
 func getAllPayedDelegators() (map[string]float64, error) {
+
+	minCoinsDelegate, err := strconv.ParseFloat(os.Getenv("MIN_COINS_DELEGATED"), 64)
+	if err != nil {
+		return nil, err
+	}
+
+	prohibetAddresses := strings.Split(os.Getenv("STOP_LIST"), ",")
+
 	allDelegators, err := GetAllDelegators()
 	if err != nil {
 		return nil, err
@@ -120,12 +130,7 @@ func getAllPayedDelegators() (map[string]float64, error) {
 	for address, _ := range allDelegators {
 		amounts := allDelegators[address]
 
-		minCoinsDelegate, err := strconv.ParseFloat(os.Getenv("MIN_COINS_DELEGATED"), 64)
-		if err != nil {
-			continue
-		}
-
-		if amounts >= minCoinsDelegate {
+		if amounts >= minCoinsDelegate && !utils.StringInSlice(address, prohibetAddresses) {
 			allPayedDelegators[address] = amounts
 		}
 	}
@@ -161,7 +166,7 @@ func getWalletBalances(address string) (*models.AddressInfo, error) {
 	}
 
 	addressInfo := models.AddressInfo{}
-	if err = json.Unmarshal(contents, &contents); err != nil {
+	if err = json.Unmarshal(contents, &addressInfo); err != nil {
 		return nil, err
 	}
 
@@ -203,16 +208,17 @@ func CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.Multi
 
 	toBePayed := balance * 0.95
 
+	index := 0
 	multiSendList := make([]models.MultiSendItem, len(payedDelegatedList))
 	for address, amount := range payedDelegatedList {
 		percent := amount * 100 / totalDelegatedCoins
 		value := utils.FloatToBigInt(toBePayed * percent * 0.01)
-
-		multiSendList = append(multiSendList, models.MultiSendItem{
+		multiSendList[index] = models.MultiSendItem{
 			Coin:  payCoinName,
 			To:    address,
 			Value: value,
-		})
+		}
+		index++
 	}
 
 	return &multiSendList, nil
