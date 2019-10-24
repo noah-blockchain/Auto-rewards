@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/go-sdk/api"
@@ -10,8 +9,8 @@ import (
 	"github.com/noah-blockchain/go-sdk/wallet"
 )
 
-func SendMultiAccounts(walletFrom *wallet.Wallet, dict []models.MultiSendItem, payload string, gasCoin string) error {
-	nodeAPI := api.NewApi(os.Getenv("NODE_API_URL"))
+func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.MultiSendItem, payload string, gasCoin string) error {
+	nodeAPI := api.NewApi(a.cfg.NodeApiURL)
 
 	nonce, err := nodeAPI.Nonce(walletFrom.Address())
 	if err != nil {
@@ -19,7 +18,7 @@ func SendMultiAccounts(walletFrom *wallet.Wallet, dict []models.MultiSendItem, p
 	}
 
 	tx := transaction.NewMultisendData()
-	for _, d := range dict {
+	for _, d := range txs {
 		tx.AddItem(
 			*transaction.NewMultisendDataItem().
 				SetCoin(d.Coin).
@@ -43,7 +42,6 @@ func SendMultiAccounts(walletFrom *wallet.Wallet, dict []models.MultiSendItem, p
 	if err != nil {
 		return err
 	}
-
 
 	fmt.Println(res.Hash)
 	fmt.Println(res.Data)

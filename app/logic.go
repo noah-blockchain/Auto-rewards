@@ -7,14 +7,22 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
+	"github.com/noah-blockchain/Auto-rewards/config"
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/Auto-rewards/utils"
 )
 
-func GetValidators() (*models.ValidatorList, error) {
-	responseStatus, err := http.Get(fmt.Sprintf("%s/status", os.Getenv("NODE_API_URL")))
+type AutoRewards struct {
+	cfg config.Config
+}
+
+func NewAutoRewards(cfg config.Config) AutoRewards {
+	return AutoRewards{cfg: cfg}
+}
+
+func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
+	responseStatus, err := http.Get(fmt.Sprintf("%s/status", a.cfg.NodeApiURL))
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +38,7 @@ func GetValidators() (*models.ValidatorList, error) {
 		return nil, err
 	}
 
-	fmt.Println(nodeStatus.Result.LatestBlockHeight)
-
-	responseValidators, err := http.Get(fmt.Sprintf("%s/validators?height=%s", os.Getenv("NODE_API_URL"), nodeStatus.Result.LatestBlockHeight))
+	responseValidators, err := http.Get(fmt.Sprintf("%s/validators?height=%s", a.cfg.NodeApiURL, nodeStatus.Result.LatestBlockHeight))
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +57,8 @@ func GetValidators() (*models.ValidatorList, error) {
 	return &validatorList, nil
 }
 
-func GetDelegatorsListByNode(pubKey string) (map[string]float64, error) {
-	res, err := http.Get(fmt.Sprintf("%s/api/v1/validators/%s", os.Getenv("EXPLORER_API_URL"), pubKey))
+func (a AutoRewards) GetDelegatorsListByNode(pubKey string) (map[string]float64, error) {
+	res, err := http.Get(fmt.Sprintf("%s/api/v1/validators/%s", a.cfg.ExplorerApiURL, pubKey))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +76,7 @@ func GetDelegatorsListByNode(pubKey string) (map[string]float64, error) {
 
 	values := make(map[string]float64, validatorInfo.Result.DelegatorCount)
 	for _, delegator := range validatorInfo.Result.DelegatorList {
-		if delegator.Coin == os.Getenv("TOKEN") {
+		if delegator.Coin == a.cfg.Token {
 			if value, err := strconv.ParseFloat(delegator.Value, 64); err == nil {
 				values[delegator.Address] = value
 			}
@@ -80,8 +86,8 @@ func GetDelegatorsListByNode(pubKey string) (map[string]float64, error) {
 	return values, nil
 }
 
-func GetAllDelegators() (map[string]float64, error) {
-	allValidators, err := GetValidators()
+func (a AutoRewards) GetAllDelegators() (map[string]float64, error) {
+	allValidators, err := a.GetValidators()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +95,7 @@ func GetAllDelegators() (map[string]float64, error) {
 	allDelegators := make(map[string]float64)
 
 	for _, validator := range allValidators.Validators {
-		delegators, err := GetDelegatorsListByNode(validator.PubKey)
+		delegators, err := a.GetDelegatorsListByNode(validator.PubKey)
 		if err != nil {
 			continue
 		}
@@ -110,17 +116,8 @@ func GetAllDelegators() (map[string]float64, error) {
 	return allDelegators, nil
 }
 
-
-func getAllPayedDelegators() (map[string]float64, error) {
-
-	minCoinsDelegate, err := strconv.ParseFloat(os.Getenv("MIN_COINS_DELEGATED"), 64)
-	if err != nil {
-		return nil, err
-	}
-
-	prohibetAddresses := strings.Split(os.Getenv("STOP_LIST"), ",")
-
-	allDelegators, err := GetAllDelegators()
+func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
+	allDelegators, err := a.GetAllDelegators()
 	if err != nil {
 		return nil, err
 	}
@@ -130,16 +127,16 @@ func getAllPayedDelegators() (map[string]float64, error) {
 	for address, _ := range allDelegators {
 		amounts := allDelegators[address]
 
-		if amounts >= minCoinsDelegate && !utils.StringInSlice(address, prohibetAddresses) {
+		if amounts >= a.cfg.MinCoinDelegated && !utils.StringInSlice(address, a.cfg.StopListAccounts) {
 			allPayedDelegators[address] = amounts
 		}
 	}
 	return allPayedDelegators, nil
 }
 
-func getTotalDelegatedCoins() (float64, error) {
+func (a AutoRewards) getTotalDelegatedCoins() (float64, error) {
 
-	payedDelegatorsList, err := getAllPayedDelegators()
+	payedDelegatorsList, err := a.getAllPayedDelegators()
 	if err != nil {
 		return 0.0, err
 	}
@@ -153,7 +150,7 @@ func getTotalDelegatedCoins() (float64, error) {
 	return totalDelegatedCoins, nil
 }
 
-func getWalletBalances(address string) (*models.AddressInfo, error) {
+func (a AutoRewards) getWalletBalances(address string) (*models.AddressInfo, error) {
 	res, err := http.Get(fmt.Sprintf("%s/api/v1/addresses/%s", os.Getenv("EXPLORER_API_URL"), address))
 	if err != nil {
 		return nil, err
@@ -173,14 +170,14 @@ func getWalletBalances(address string) (*models.AddressInfo, error) {
 	return &addressInfo, nil
 }
 
-func getNoahBalance(address string) (float64, error) {
-	balances, err := getWalletBalances(address)
+func (a AutoRewards) getNoahBalance(address string) (float64, error) {
+	balances, err := a.getWalletBalances(address)
 	if err != nil {
 		return 0.0, err
 	}
 
 	for _, value := range balances.Data.Balances {
-		if value.Coin == "NOAH" {
+		if value.Coin == a.cfg.BaseCoin {
 			if value, err := strconv.ParseFloat(value.Amount, 64); err == nil {
 				return value, nil
 			}
@@ -190,18 +187,18 @@ func getNoahBalance(address string) (float64, error) {
 	return 0.0, nil
 }
 
-func CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.MultiSendItem, error) {
-	totalDelegatedCoins, err := getTotalDelegatedCoins()
+func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.MultiSendItem, error) {
+	totalDelegatedCoins, err := a.getTotalDelegatedCoins()
 	if err != nil || totalDelegatedCoins == 0 {
 		return nil, err
 	}
 
-	payedDelegatedList, err := getAllPayedDelegators()
+	payedDelegatedList, err := a.getAllPayedDelegators()
 	if err != nil {
 		return nil, err
 	}
 
-	balance, err := getNoahBalance(walletFrom)
+	balance, err := a.getNoahBalance(walletFrom)
 	if err != nil {
 		return nil, err
 	}
