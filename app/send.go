@@ -1,7 +1,7 @@
 package app
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/go-sdk/api"
@@ -43,10 +43,6 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 		return err
 	}
 
-	fmt.Println(res.Hash)
-	fmt.Println(res.Data)
-	fmt.Println(res.Log)
-	fmt.Println(res)
-
+	log.Println("MultiSend trx successful created with HASH=", res.Hash)
 	return nil
 }
