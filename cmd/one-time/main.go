@@ -61,7 +61,11 @@ func main() {
 	}
 	log.Println("Multi list for accounts was successful created.")
 
-	if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Payment from app", cfg.BaseCoin); err != nil {
+	for _, item := range *multiSend {
+		log.Println(fmt.Sprintf("Will be send %s %s to %s", item.Value.String(), item.Coin, item.To))
+	}
+
+	if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err != nil {
 		log.Panicln(err)
 	}
 	log.Println("All multi accounts was successful transferred.")

@@ -11,6 +11,7 @@ type Config struct {
 	NodeApiURL       string
 	ExplorerApiURL   string
 	Token            string
+	CronTime         string
 	MinCoinDelegated float64
 	StopListAccounts []string
 }
