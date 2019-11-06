@@ -16,33 +16,18 @@ import (
 )
 
 var (
-	cfg           = config.Config{}
-	cronScheduler = cron.New(
-		cron.WithParser(
-			cron.NewParser(
-				cron.Descriptor|cron.SecondOptional|cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow,
-			),
-		),
-		cron.WithLogger(
-			cron.VerbosePrintfLogger(
-				log.New(os.Stdout,
-					"go cron scheduler: ",
-					log.LstdFlags|log.Lmicroseconds|log.Llongfile|log.Lshortfile,
-				),
-			),
-		),
-		cron.WithLocation(time.FixedZone("Europe/Moscow", 0)),
-	)
+	cfg = config.Config{}
 )
 
 func init() {
-	minCoinDelegated := config.FloatGetEnv(os.Getenv("MIN_COINS_DELEGATED"), 100)
+	minCoinDelegated := config.FloatGetEnv(os.Getenv("MIN_COINS_DELEGATED"), 1)
 	cfg.StopListAccounts = strings.Split(os.Getenv("STOP_LIST"), ",")
 	flag.StringVar(&cfg.SeedPhrase, "seed.phrase", os.Getenv("SEED_PHRASE"), "seed phrase not exist")
 	flag.StringVar(&cfg.BaseCoin, "base.coin", os.Getenv("BASE_COIN"), "base coin not exist")
 	flag.StringVar(&cfg.NodeApiURL, "node.api_url", os.Getenv("NODE_API_URL"), "node api url not exist")
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
+	flag.StringVar(&cfg.CronTime, "cron_time", os.Getenv("CRON_TIME"), "cron time not exist")
 	flag.Float64Var(&cfg.MinCoinDelegated, "min_coin_delegated", minCoinDelegated, "min coin delegated not setup")
 }
 
@@ -65,9 +50,33 @@ func main() {
 		log.Panicf("Invalid value %s for field %s", cfg.ExplorerApiURL, "explorer.api_url")
 	case cfg.Token == "":
 		log.Panicf("Invalid value %s for field %s", cfg.Token, "token")
+	case cfg.CronTime == "":
+		log.Panicf("Invalid value %s for field %s", cfg.CronTime, "cron_time")
 	}
 
-	_, _ = cronScheduler.AddFunc("00 14 * * * *", func() {
+	timeZoneMSK, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	cronScheduler := cron.New(
+		cron.WithParser(
+			cron.NewParser(
+				cron.SecondOptional|cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow,
+			),
+		),
+		cron.WithLogger(
+			cron.VerbosePrintfLogger(
+				log.New(os.Stdout,
+					"go cron scheduler: ",
+					log.LstdFlags|log.Lmicroseconds|log.Llongfile|log.Lshortfile,
+				),
+			),
+		),
+		cron.WithLocation(timeZoneMSK),
+	)
+
+	_, _ = cronScheduler.AddFunc(cfg.CronTime, func() {
 
 		seed, _ := wallet.Seed(cfg.SeedPhrase)
 		walletFrom, err := wallet.NewWallet(seed)
@@ -83,7 +92,11 @@ func main() {
 		}
 		log.Println("Multi list for accounts was successful created.")
 
-		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Payment from app", cfg.BaseCoin); err != nil {
+		for _, item := range *multiSend {
+			log.Println(fmt.Sprintf("Will be send %s %s to %s", item.Value.String(), item.Coin, item.To))
+		}
+
+		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err != nil {
 			log.Panicln(err)
 		}
 		log.Println("All multi accounts was successful transferred.")

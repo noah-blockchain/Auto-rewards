@@ -3,8 +3,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -22,13 +20,8 @@ func NewAutoRewards(cfg config.Config) AutoRewards {
 }
 
 func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
-	responseStatus, err := http.Get(fmt.Sprintf("%s/status", a.cfg.NodeApiURL))
-	if err != nil {
-		return nil, err
-	}
 
-	defer responseStatus.Body.Close()
-	contentsStatus, err := ioutil.ReadAll(responseStatus.Body)
+	contentsStatus, err := createReq(fmt.Sprintf("%s/status", a.cfg.NodeApiURL))
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +31,7 @@ func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
 		return nil, err
 	}
 
-	responseValidators, err := http.Get(fmt.Sprintf("%s/validators?height=%s", a.cfg.NodeApiURL, nodeStatus.Result.LatestBlockHeight))
-	if err != nil {
-		return nil, err
-	}
-
-	defer responseValidators.Body.Close()
-	contentsValidators, err := ioutil.ReadAll(responseValidators.Body)
+	contentsValidators, err := createReq(fmt.Sprintf("%s/validators?height=%s", a.cfg.NodeApiURL, nodeStatus.Result.LatestBlockHeight))
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +45,7 @@ func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
 }
 
 func (a AutoRewards) GetDelegatorsListByNode(pubKey string) (map[string]float64, error) {
-	res, err := http.Get(fmt.Sprintf("%s/api/v1/validators/%s", a.cfg.ExplorerApiURL, pubKey))
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-	contents, err := ioutil.ReadAll(res.Body)
+	contents, err := createReq(fmt.Sprintf("%s/api/v1/validators/%s", a.cfg.ExplorerApiURL, pubKey))
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +132,7 @@ func (a AutoRewards) getTotalDelegatedCoins() (float64, error) {
 }
 
 func (a AutoRewards) getWalletBalances(address string) (*models.AddressInfo, error) {
-	res, err := http.Get(fmt.Sprintf("%s/api/v1/addresses/%s", os.Getenv("EXPLORER_API_URL"), address))
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-	contents, err := ioutil.ReadAll(res.Body)
+	contents, err := createReq(fmt.Sprintf("%s/api/v1/addresses/%s", os.Getenv("EXPLORER_API_URL"), address))
 	if err != nil {
 		return nil, err
 	}
