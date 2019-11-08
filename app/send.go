@@ -27,7 +27,7 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 		)
 	}
 
-	signedTx, err := transaction.NewBuilder(transaction.MainNetChainID).NewTransaction(tx)
+	signedTx, err := transaction.NewBuilder(transaction.TestNetChainID).NewTransaction(tx)
 	if err != nil {
 		return err
 	}
