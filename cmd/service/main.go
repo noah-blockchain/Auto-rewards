@@ -11,16 +11,19 @@ import (
 
 	"github.com/noah-blockchain/Auto-rewards/app"
 	"github.com/noah-blockchain/Auto-rewards/config"
+	"github.com/noah-blockchain/go-sdk/api"
 	"github.com/noah-blockchain/go-sdk/wallet"
 	"github.com/robfig/cron/v3"
 )
 
-var (
-	cfg = config.Config{}
+const (
+	WrongNonce        = 101
+	InsufficientFunds = 107
 )
 
+var cfg = config.Config{}
+
 func init() {
-	minCoinDelegated := config.FloatGetEnv(os.Getenv("MIN_COINS_DELEGATED"), 1)
 	cfg.StopListAccounts = strings.Split(os.Getenv("STOP_LIST"), ",")
 	flag.StringVar(&cfg.SeedPhrase, "seed.phrase", os.Getenv("SEED_PHRASE"), "seed phrase not exist")
 	flag.StringVar(&cfg.BaseCoin, "base.coin", os.Getenv("BASE_COIN"), "base coin not exist")
@@ -28,7 +31,6 @@ func init() {
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
 	flag.StringVar(&cfg.CronTime, "cron_time", os.Getenv("CRON_TIME"), "cron time not exist")
-	flag.Float64Var(&cfg.MinCoinDelegated, "min_coin_delegated", minCoinDelegated, "min coin delegated not setup")
 }
 
 func main() {
@@ -56,7 +58,7 @@ func main() {
 
 	timeZoneMSK, err := time.LoadLocation("Europe/Moscow")
 	if err != nil {
-		log.Panic(err)
+		log.Panicln(err)
 	}
 
 	cronScheduler := cron.New(
@@ -92,15 +94,22 @@ func main() {
 		}
 		log.Println("Multi list for accounts was successful created.")
 
-		for _, item := range *multiSend {
-			log.Println(fmt.Sprintf("Will be send %s %s to %s", item.Value.String(), item.Coin, item.To))
-		}
+		attempt := 1
+		for {
+			fmt.Println("Attempt number ", attempt)
+			if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err == nil {
+				break
+			}
 
-		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err != nil {
-			log.Panicln(err)
+			eTxError, ok := err.(*api.TxError)
+			if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
+				break
+			}
+
+			time.Sleep(60 * time.Second)
+			attempt++
 		}
 		log.Println("All multi accounts was successful transferred.")
-
 	})
 	cronScheduler.Start()
 

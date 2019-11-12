@@ -33,7 +33,7 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 	}
 
 	finishedTx, err := signedTx.
-		SetNonce(nonce).SetGasPrice(1).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
+		SetNonce(nonce).SetGasPrice(255).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
 	if err != nil {
 		return err
 	}
