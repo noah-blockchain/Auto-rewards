@@ -11,7 +11,7 @@ import (
 func createReq(url string) ([]byte, error) {
 	client := pester.New()
 	client.Concurrency = 1
-	client.MaxRetries = 7
+	client.MaxRetries = 10
 	client.Backoff = pester.ExponentialBackoff
 	client.KeepLog = true
 	client.Timeout = 10 * time.Second

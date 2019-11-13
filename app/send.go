@@ -27,13 +27,13 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 		)
 	}
 
-	signedTx, err := transaction.NewBuilder(transaction.MainNetChainID).NewTransaction(tx)
+	signedTx, err := transaction.NewBuilder(transaction.TestNetChainID).NewTransaction(tx)
 	if err != nil {
 		return err
 	}
 
 	finishedTx, err := signedTx.
-		SetNonce(nonce).SetGasPrice(1).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
+		SetNonce(nonce).SetGasPrice(255).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,9 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"strconv"
 
@@ -107,8 +109,7 @@ func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
 
 	for address, _ := range allDelegators {
 		amounts := allDelegators[address]
-
-		if amounts >= a.cfg.MinCoinDelegated && !utils.StringInSlice(address, a.cfg.StopListAccounts) {
+		if !utils.StringInSlice(address, a.cfg.StopListAccounts) {
 			allPayedDelegators[address] = amounts
 		}
 	}
@@ -159,7 +160,7 @@ func (a AutoRewards) getNoahBalance(address string) (float64, error) {
 		}
 	}
 
-	return 0.0, nil
+	return 0.0, errors.New("User Noah Balance not found\n")
 }
 
 func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.MultiSendItem, error) {
@@ -173,25 +174,31 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 		return nil, err
 	}
 
-	balance, err := a.getNoahBalance(walletFrom)
+	balanceNoah, err := a.getNoahBalance(walletFrom)
 	if err != nil {
 		return nil, err
 	}
 
-	toBePayed := balance * 0.95
+	toBePayed := balanceNoah * 0.95
 
 	index := 0
+	sumQNoah := big.NewInt(0)
 	multiSendList := make([]models.MultiSendItem, len(payedDelegatedList))
 	for address, amount := range payedDelegatedList {
 		percent := amount * 100 / totalDelegatedCoins
-		value := utils.FloatToBigInt(toBePayed * percent * 0.01)
+		valueQNoah := utils.FloatToBigInt(toBePayed * percent * 0.01)
 		multiSendList[index] = models.MultiSendItem{
 			Coin:  payCoinName,
 			To:    address,
-			Value: value,
+			Value: valueQNoah,
 		}
+
+		sumQNoah.Add(sumQNoah, valueQNoah)
 		index++
 	}
 
+	if sumQNoah.String() == "0" {
+		return nil, errors.New("Trying send 0 QNoah\n")
+	}
 	return &multiSendList, nil
 }
