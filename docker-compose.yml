@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+  auto-rewards:
+    build:
+      context: .
+    environment:
+      TOKEN: NOAH
+      BASE_COIN: NOAH
+      SEED_PHRASE: SEED_PHRASE
+      NODE_API_URL: http://176.9.116.72:8841
+      EXPLORER_API_URL: http://176.9.78.13:9050

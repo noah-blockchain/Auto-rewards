@@ -23,7 +23,6 @@ const (
 var cfg = config.Config{}
 
 func init() {
-	cfg.StopListAccounts = strings.Split(os.Getenv("STOP_LIST"), ",")
 	flag.StringVar(&cfg.SeedPhrase, "seed.phrase", os.Getenv("SEED_PHRASE"), "seed phrase not exist")
 	flag.StringVar(&cfg.BaseCoin, "base.coin", os.Getenv("BASE_COIN"), "base coin not exist")
 	flag.StringVar(&cfg.NodeApiURL, "node.api_url", os.Getenv("NODE_API_URL"), "node api url not exist")
