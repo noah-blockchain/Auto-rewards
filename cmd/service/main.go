@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jasonlvhit/gocron"
 	"github.com/noah-blockchain/Auto-rewards/app"
 	"github.com/noah-blockchain/Auto-rewards/config"
 	"github.com/noah-blockchain/go-sdk/api"
 	"github.com/noah-blockchain/go-sdk/wallet"
-	"github.com/robfig/cron/v3"
 )
 
 const (
@@ -31,6 +31,39 @@ func init() {
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
 	flag.StringVar(&cfg.CronTime, "cron_time", os.Getenv("CRON_TIME"), "cron time not exist")
+}
+
+func task() {
+	seed, _ := wallet.Seed(cfg.SeedPhrase)
+	walletFrom, err := wallet.NewWallet(seed)
+	if err != nil {
+		log.Panicln(err)
+	}
+	log.Println("Wallet was successful received.")
+
+	autoRewards := app.NewAutoRewards(cfg)
+	multiSend, err := autoRewards.CreateMultiSendList(walletFrom.Address(), cfg.BaseCoin)
+	if err != nil || multiSend == nil {
+		log.Panicln(err)
+	}
+	log.Println("Multi list for accounts was successful created.")
+
+	attempt := 1
+	for {
+		fmt.Println("Attempt number ", attempt)
+		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err == nil {
+			break
+		}
+
+		eTxError, ok := err.(*api.TxError)
+		if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
+			break
+		}
+
+		time.Sleep(60 * time.Second)
+		attempt++
+	}
+	log.Println("All multi accounts was successful transferred.")
 }
 
 func main() {
@@ -56,62 +89,17 @@ func main() {
 		log.Panicf("Invalid value %s for field %s", cfg.CronTime, "cron_time")
 	}
 
+	fmt.Println("Start service Auto-Rewards")
+
 	timeZoneMSK, err := time.LoadLocation("Europe/Moscow")
 	if err != nil {
 		log.Panicln(err)
 	}
+	gocron.ChangeLoc(timeZoneMSK)
+	gocron.Every(1).Day().At("12:15").Do(task)
 
-	cronScheduler := cron.New(
-		cron.WithParser(
-			cron.NewParser(
-				cron.SecondOptional|cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow,
-			),
-		),
-		cron.WithLogger(
-			cron.VerbosePrintfLogger(
-				log.New(os.Stdout,
-					"go cron scheduler: ",
-					log.LstdFlags|log.Lmicroseconds|log.Llongfile|log.Lshortfile,
-				),
-			),
-		),
-		cron.WithLocation(timeZoneMSK),
-	)
+	_, nextTime := gocron.NextRun()
+	fmt.Println("Task will be starting in", nextTime.String())
 
-	_, _ = cronScheduler.AddFunc(cfg.CronTime, func() {
-
-		seed, _ := wallet.Seed(cfg.SeedPhrase)
-		walletFrom, err := wallet.NewWallet(seed)
-		if err != nil {
-			log.Panicln(err)
-		}
-		log.Println("Wallet was successful received.")
-
-		autoRewards := app.NewAutoRewards(cfg)
-		multiSend, err := autoRewards.CreateMultiSendList(walletFrom.Address(), cfg.BaseCoin)
-		if err != nil || multiSend == nil {
-			log.Panicln(err)
-		}
-		log.Println("Multi list for accounts was successful created.")
-
-		attempt := 1
-		for {
-			fmt.Println("Attempt number ", attempt)
-			if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err == nil {
-				break
-			}
-
-			eTxError, ok := err.(*api.TxError)
-			if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
-				break
-			}
-
-			time.Sleep(60 * time.Second)
-			attempt++
-		}
-		log.Println("All multi accounts was successful transferred.")
-	})
-	cronScheduler.Start()
-
-	select {}
+	<-gocron.Start()
 }
