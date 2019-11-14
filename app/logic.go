@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"os"
-	"strconv"
-
 	"github.com/noah-blockchain/Auto-rewards/config"
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/Auto-rewards/utils"
+	"log"
+	"math/big"
+	"os"
+	"strconv"
+	"time"
 )
 
 type AutoRewards struct {
@@ -109,9 +110,7 @@ func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
 
 	for address, _ := range allDelegators {
 		amounts := allDelegators[address]
-		if !utils.StringInSlice(address, a.cfg.StopListAccounts) {
-			allPayedDelegators[address] = amounts
-		}
+		allPayedDelegators[address] = amounts
 	}
 	return allPayedDelegators, nil
 }
@@ -160,7 +159,7 @@ func (a AutoRewards) getNoahBalance(address string) (float64, error) {
 		}
 	}
 
-	return 0.0, errors.New("User Noah Balance not found\n")
+	return 0.0, errors.New("ERROR! User Noah Balance not found.")
 }
 
 func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.MultiSendItem, error) {
@@ -174,9 +173,14 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 		return nil, err
 	}
 
-	balanceNoah, err := a.getNoahBalance(walletFrom)
-	if err != nil {
-		return nil, err
+	var balanceNoah float64
+	for {
+		if balanceNoah, err = a.getNoahBalance(walletFrom); err == nil && balanceNoah > 0.0 {
+			log.Println(fmt.Sprintf("OK! Received Noah Balance %f", balanceNoah))
+			break
+		}
+		log.Println("ERROR!", err)
+		time.Sleep(3 * time.Second)
 	}
 
 	toBePayed := balanceNoah * 0.95
@@ -198,7 +202,7 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 	}
 
 	if sumQNoah.String() == "0" {
-		return nil, errors.New("Trying send 0 QNoah\n")
+		return nil, errors.New("ERROR! Trying send 0 QNoah\n")
 	}
 	return &multiSendList, nil
 }

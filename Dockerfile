@@ -10,9 +10,9 @@ COPY . ${APP_PATH}
 
 WORKDIR ${APP_PATH}
 
-RUN make create_vendor && \
-    make build && \
-    cp ./builds/auto_rewards /usr/local/bin/auto_rewards
+RUN make create_vendor && make build
 
+FROM debian:buster-slim as executor
+COPY --from=builder /home/auto_rewards/builds/auto_rewards /usr/local/bin/auto_rewards
 CMD ["auto_rewards"]
 STOPSIGNAL SIGTERM
