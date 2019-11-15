@@ -32,16 +32,14 @@ func (a AutoRewards) Task() {
 	for {
 		fmt.Println("INFO! CreateMultiSendList Attempt number", attempt)
 
-		if len(multiSend) == 0 {
-			multiSend, err = a.CreateMultiSendList(walletFrom.Address(), a.cfg.BaseCoin)
-			if err != nil || len(multiSend) == 0 {
-				log.Println("ERROR! Multi send list not created", err)
-				time.Sleep(15 * time.Second)
-				attempt++
-				continue
-			}
-			log.Println("OK! Multi list for accounts was successful created.")
+		multiSend, err = a.CreateMultiSendList(walletFrom.Address(), a.cfg.BaseCoin)
+		if err != nil || len(multiSend) == 0 {
+			log.Println("ERROR! Multi send list not created, size", len(multiSend), err)
+			time.Sleep(15 * time.Second)
+			attempt++
+			continue
 		}
+		log.Println("OK! Multi list for accounts was successful created.")
 
 		err = a.SendMultiAccounts(walletFrom, multiSend, "Auto-Reward payment", a.cfg.BaseCoin)
 		if err != nil {
