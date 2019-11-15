@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	WrongNonce = 101
+	WrongNonce        = 101
 	InsufficientFunds = 107
 )
 
@@ -28,6 +28,8 @@ func init() {
 	flag.StringVar(&cfg.NodeApiURL, "node.api_url", os.Getenv("NODE_API_URL"), "node api url not exist")
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
+	flag.StringVar(&cfg.TimeZone, "time_zone", os.Getenv("TIME_ZONE"), "time_zone not exist")
+	flag.StringVar(&cfg.TimeStart, "time_start", os.Getenv("TIME_START"), "time_start not exist")
 }
 
 func main() {
@@ -49,6 +51,10 @@ func main() {
 		log.Panicf("Invalid value %s for field %s", cfg.ExplorerApiURL, "explorer.api_url")
 	case cfg.Token == "":
 		log.Panicf("Invalid value %s for field %s", cfg.Token, "token")
+	case cfg.TimeZone == "":
+		log.Panicf("Invalid value %s for field %s", cfg.TimeZone, "time_zone")
+	case cfg.TimeStart == "":
+		log.Panicf("Invalid value %s for field %s", cfg.TimeStart, "time_start")
 	}
 
 	seed, _ := wallet.Seed(cfg.SeedPhrase)
@@ -73,7 +79,7 @@ func main() {
 		}
 
 		eTxError, ok := err.(*api.TxError)
-		if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce){
+		if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
 			break
 		}
 
