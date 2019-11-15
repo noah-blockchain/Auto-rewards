@@ -33,6 +33,7 @@ func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
 	if err = json.Unmarshal(contentsStatus, &nodeStatus); err != nil {
 		return nil, err
 	}
+	log.Println("INFO! Latest Block Height=", nodeStatus.Result.LatestBlockHeight)
 
 	contentsValidators, err := createReq(fmt.Sprintf("%s/validators?height=%s", a.cfg.NodeApiURL, nodeStatus.Result.LatestBlockHeight))
 	if err != nil {
@@ -43,6 +44,7 @@ func (a AutoRewards) GetValidators() (*models.ValidatorList, error) {
 	if err = json.Unmarshal(contentsValidators, &validatorList); err != nil {
 		return nil, err
 	}
+	log.Println("INFO! Validators count=", len(validatorList.Validators))
 
 	return &validatorList, nil
 }
@@ -57,12 +59,14 @@ func (a AutoRewards) GetDelegatorsListByNode(pubKey string) (map[string]float64,
 	if err = json.Unmarshal(contents, &validatorInfo); err != nil {
 		return nil, err
 	}
+	log.Println("INFO! Delegator count =", validatorInfo.Result.DelegatorCount)
 
 	values := make(map[string]float64, validatorInfo.Result.DelegatorCount)
 	for _, delegator := range validatorInfo.Result.DelegatorList {
 		if delegator.Coin == a.cfg.Token {
 			if value, err := strconv.ParseFloat(delegator.Value, 64); err == nil {
 				values[delegator.Address] = value
+				log.Println("INFO! Address=", delegator.Value, "Value=", value)
 			}
 		}
 	}
@@ -77,7 +81,6 @@ func (a AutoRewards) GetAllDelegators() (map[string]float64, error) {
 	}
 
 	allDelegators := make(map[string]float64)
-
 	for _, validator := range allValidators.Validators {
 		delegators, err := a.GetDelegatorsListByNode(validator.PubKey)
 		if err != nil {
@@ -107,7 +110,6 @@ func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
 	}
 
 	allPayedDelegators := make(map[string]float64)
-
 	for address, _ := range allDelegators {
 		amounts := allDelegators[address]
 		allPayedDelegators[address] = amounts
@@ -116,14 +118,12 @@ func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
 }
 
 func (a AutoRewards) getTotalDelegatedCoins() (float64, error) {
-
 	payedDelegatorsList, err := a.getAllPayedDelegators()
 	if err != nil {
 		return 0.0, err
 	}
 
 	totalDelegatedCoins := 0.0
-
 	for _, amount := range payedDelegatorsList {
 		totalDelegatedCoins += amount
 	}
@@ -141,6 +141,7 @@ func (a AutoRewards) getWalletBalances(address string) (*models.AddressInfo, err
 	if err = json.Unmarshal(contents, &addressInfo); err != nil {
 		return nil, err
 	}
+	log.Println("INFO! Address=", addressInfo.Data.Address, "Balance=", addressInfo.Data.Balances)
 
 	return &addressInfo, nil
 }
@@ -159,7 +160,7 @@ func (a AutoRewards) getNoahBalance(address string) (float64, error) {
 		}
 	}
 
-	return 0.0, errors.New("ERROR! User Noah Balance not found.")
+	return 0.0, errors.New("ERROR! User Noah Balance not found")
 }
 
 func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) ([]models.MultiSendItem, error) {
@@ -172,6 +173,7 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 	if err != nil {
 		return nil, err
 	}
+	log.Println("INFO! Payed Delegated List Count =", len(payedDelegatedList))
 
 	var balanceNoah float64
 	for {
@@ -179,28 +181,28 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 			log.Println(fmt.Sprintf("OK! Received Noah Balance %f", balanceNoah))
 			break
 		}
-		log.Println("ERROR!", err)
-		time.Sleep(3 * time.Second)
+		log.Println(err)
+		time.Sleep(5 * time.Second)
 	}
 
-	toBePayed := balanceNoah * 0.95
-
 	sumQNoah := big.NewInt(0)
+	toBePayed := balanceNoah * 0.95
 	var multiSendList []models.MultiSendItem
 	for address, amount := range payedDelegatedList {
 		percent := amount * 100 / totalDelegatedCoins
 		valueQNoah := utils.FloatToBigInt(toBePayed * percent * 0.01)
+		log.Println(address, "receiving", percent, "%", valueQNoah, "QNOAH")
 		multiSendList = append(multiSendList, models.MultiSendItem{
 			Coin:  payCoinName,
 			To:    address,
 			Value: valueQNoah,
 		})
-
 		sumQNoah.Add(sumQNoah, valueQNoah)
 	}
+	log.Println("INFO! Will be send", sumQNoah.String(), "QNOAH")
 
 	if sumQNoah.String() == "0" {
-		return nil, errors.New("ERROR! Trying send 0 QNoah\n")
+		return nil, errors.New("ERROR! Trying send 0 QNOAH")
 	}
 
 	return multiSendList, nil

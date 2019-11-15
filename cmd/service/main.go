@@ -14,7 +14,6 @@ import (
 	"github.com/noah-blockchain/Auto-rewards/config"
 )
 
-
 var cfg = config.Config{}
 
 func init() {

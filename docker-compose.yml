@@ -10,3 +10,5 @@ services:
       SEED_PHRASE: SEED_PHRASE
       NODE_API_URL: http://176.9.116.72:8841
       EXPLORER_API_URL: http://176.9.78.13:9050
+      TIME_ZONE: Europe/Moscow
+      TIME_START: 09:00
