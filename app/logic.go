@@ -162,7 +162,7 @@ func (a AutoRewards) getNoahBalance(address string) (float64, error) {
 	return 0.0, errors.New("ERROR! User Noah Balance not found.")
 }
 
-func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) (*[]models.MultiSendItem, error) {
+func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) ([]models.MultiSendItem, error) {
 	totalDelegatedCoins, err := a.getTotalDelegatedCoins()
 	if err != nil || totalDelegatedCoins == 0 {
 		return nil, err
@@ -185,24 +185,23 @@ func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) 
 
 	toBePayed := balanceNoah * 0.95
 
-	index := 0
 	sumQNoah := big.NewInt(0)
-	multiSendList := make([]models.MultiSendItem, len(payedDelegatedList))
+	var multiSendList []models.MultiSendItem
 	for address, amount := range payedDelegatedList {
 		percent := amount * 100 / totalDelegatedCoins
 		valueQNoah := utils.FloatToBigInt(toBePayed * percent * 0.01)
-		multiSendList[index] = models.MultiSendItem{
+		multiSendList = append(multiSendList, models.MultiSendItem{
 			Coin:  payCoinName,
 			To:    address,
 			Value: valueQNoah,
-		}
+		})
 
 		sumQNoah.Add(sumQNoah, valueQNoah)
-		index++
 	}
 
 	if sumQNoah.String() == "0" {
 		return nil, errors.New("ERROR! Trying send 0 QNoah\n")
 	}
-	return &multiSendList, nil
+
+	return multiSendList, nil
 }
