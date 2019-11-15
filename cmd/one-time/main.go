@@ -7,17 +7,9 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/noah-blockchain/Auto-rewards/app"
 	"github.com/noah-blockchain/Auto-rewards/config"
-	"github.com/noah-blockchain/go-sdk/api"
-	"github.com/noah-blockchain/go-sdk/wallet"
-)
-
-const (
-	WrongNonce        = 101
-	InsufficientFunds = 107
 )
 
 var cfg = config.Config{}
@@ -28,8 +20,6 @@ func init() {
 	flag.StringVar(&cfg.NodeApiURL, "node.api_url", os.Getenv("NODE_API_URL"), "node api url not exist")
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
-	flag.StringVar(&cfg.TimeZone, "time_zone", os.Getenv("TIME_ZONE"), "time_zone not exist")
-	flag.StringVar(&cfg.TimeStart, "time_start", os.Getenv("TIME_START"), "time_start not exist")
 }
 
 func main() {
@@ -51,40 +41,8 @@ func main() {
 		log.Panicf("Invalid value %s for field %s", cfg.ExplorerApiURL, "explorer.api_url")
 	case cfg.Token == "":
 		log.Panicf("Invalid value %s for field %s", cfg.Token, "token")
-	case cfg.TimeZone == "":
-		log.Panicf("Invalid value %s for field %s", cfg.TimeZone, "time_zone")
-	case cfg.TimeStart == "":
-		log.Panicf("Invalid value %s for field %s", cfg.TimeStart, "time_start")
 	}
-
-	seed, _ := wallet.Seed(cfg.SeedPhrase)
-	walletFrom, err := wallet.NewWallet(seed)
-	if err != nil {
-		log.Panicln(err)
-	}
-	log.Println("Wallet was successful received.")
 
 	autoRewards := app.NewAutoRewards(cfg)
-	multiSend, err := autoRewards.CreateMultiSendList(walletFrom.Address(), cfg.BaseCoin)
-	if err != nil || multiSend == nil {
-		log.Panicln(err)
-	}
-	log.Println("Multi list for accounts was successful created.")
-
-	attempt := 1
-	for {
-		fmt.Println("Attempt number ", attempt)
-		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err == nil {
-			break
-		}
-
-		eTxError, ok := err.(*api.TxError)
-		if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
-			break
-		}
-
-		time.Sleep(60 * time.Second)
-		attempt++
-	}
-	log.Println("All multi accounts was successful transferred.")
+	autoRewards.Task()
 }

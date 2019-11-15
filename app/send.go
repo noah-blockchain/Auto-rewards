@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/noah-blockchain/Auto-rewards/models"
@@ -10,6 +12,11 @@ import (
 )
 
 func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.MultiSendItem, payload string, gasCoin string) error {
+	if len(txs) == 0 {
+		fmt.Println("ERROR! Empty txs list")
+		return errors.New("ERROR! Multi list accounts cant be empty")
+	}
+
 	nodeAPI := api.NewApi(a.cfg.NodeApiURL)
 
 	nonce, err := nodeAPI.Nonce(walletFrom.Address())
@@ -43,6 +50,6 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 		return err
 	}
 
-	log.Println("MultiSend trx successful created with HASH=", res.Hash)
+	log.Println("OK! MultiSend trx successful created with HASH=", res.Hash)
 	return nil
 }

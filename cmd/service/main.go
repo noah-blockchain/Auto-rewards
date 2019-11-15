@@ -12,15 +12,8 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/noah-blockchain/Auto-rewards/app"
 	"github.com/noah-blockchain/Auto-rewards/config"
-	"github.com/noah-blockchain/Auto-rewards/models"
-	"github.com/noah-blockchain/go-sdk/api"
-	"github.com/noah-blockchain/go-sdk/wallet"
 )
 
-const (
-	WrongNonce        = 101
-	InsufficientFunds = 107
-)
 
 var cfg = config.Config{}
 
@@ -32,49 +25,6 @@ func init() {
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
 	flag.StringVar(&cfg.TimeZone, "time_zone", os.Getenv("TIME_ZONE"), "time_zone not exist")
 	flag.StringVar(&cfg.TimeStart, "time_start", os.Getenv("TIME_START"), "time_start not exist")
-}
-
-func task() {
-
-	seed, _ := wallet.Seed(cfg.SeedPhrase)
-	walletFrom, err := wallet.NewWallet(seed)
-	if err != nil {
-		log.Panicln(err)
-	}
-	log.Println("OK! Wallet was successful received.")
-
-	autoRewards := app.NewAutoRewards(cfg)
-
-	var multiSend *[]models.MultiSendItem
-	attempt := 1
-	for {
-		fmt.Println("INFO! CreateMultiSendList Attempt number", attempt)
-		multiSend, err = autoRewards.CreateMultiSendList(walletFrom.Address(), cfg.BaseCoin)
-		if err == nil || multiSend != nil {
-			log.Println("OK! Multi list for accounts was successful created.")
-			break
-		}
-		log.Println("ERROR!", err)
-		time.Sleep(15 * time.Second)
-	}
-
-	attempt = 1
-	for {
-		fmt.Println("INFO! SendMultiAccounts Attempt number", attempt)
-		if err = autoRewards.SendMultiAccounts(walletFrom, *multiSend, "Auto-Reward payment", cfg.BaseCoin); err == nil {
-			break
-		}
-		log.Println("ERROR! ", err)
-
-		eTxError, ok := err.(*api.TxError)
-		if ok && (eTxError.TxResult.Code != InsufficientFunds && eTxError.TxResult.Code != WrongNonce) {
-			break
-		}
-
-		time.Sleep(15 * time.Second)
-		attempt++
-	}
-	log.Println("All multi accounts was successful transferred.")
 }
 
 func main() {
@@ -109,7 +59,9 @@ func main() {
 		log.Panicln(err)
 	}
 	gocron.ChangeLoc(timeZoneMSK)
-	gocron.Every(1).Day().At(cfg.TimeStart).Do(task)
+
+	autoRewards := app.NewAutoRewards(cfg)
+	gocron.Every(1).Day().At(cfg.TimeStart).Do(autoRewards.Task)
 
 	_, nextTime := gocron.NextRun()
 	fmt.Println("Task will be starting in", nextTime.String())
