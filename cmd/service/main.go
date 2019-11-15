@@ -30,6 +30,8 @@ func init() {
 	flag.StringVar(&cfg.NodeApiURL, "node.api_url", os.Getenv("NODE_API_URL"), "node api url not exist")
 	flag.StringVar(&cfg.ExplorerApiURL, "explorer.api_url", os.Getenv("EXPLORER_API_URL"), "explorer api url not exist")
 	flag.StringVar(&cfg.Token, "token", os.Getenv("TOKEN"), "token not exist")
+	flag.StringVar(&cfg.TimeZone, "time_zone", os.Getenv("TIME_ZONE"), "time_zone not exist")
+	flag.StringVar(&cfg.TimeStart, "time_start", os.Getenv("TIME_START"), "time_start not exist")
 }
 
 func task() {
@@ -94,16 +96,20 @@ func main() {
 		log.Panicf("Invalid value %s for field %s", cfg.ExplorerApiURL, "explorer.api_url")
 	case cfg.Token == "":
 		log.Panicf("Invalid value %s for field %s", cfg.Token, "token")
+	case cfg.TimeZone == "":
+		log.Panicf("Invalid value %s for field %s", cfg.TimeZone, "time_zone")
+	case cfg.TimeStart == "":
+		log.Panicf("Invalid value %s for field %s", cfg.TimeStart, "time_start")
 	}
 
 	fmt.Println("Start service Auto-Rewards")
 
-	timeZoneMSK, err := time.LoadLocation("Europe/Moscow")
+	timeZoneMSK, err := time.LoadLocation(cfg.TimeZone)
 	if err != nil {
 		log.Panicln(err)
 	}
 	gocron.ChangeLoc(timeZoneMSK)
-	gocron.Every(1).Day().At("21:30").Do(task)
+	gocron.Every(1).Day().At(cfg.TimeStart).Do(task)
 
 	_, nextTime := gocron.NextRun()
 	fmt.Println("Task will be starting in", nextTime.String())
