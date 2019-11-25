@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/noah-blockchain/Auto-rewards/models"
 	"github.com/noah-blockchain/go-sdk/api"
 	"github.com/noah-blockchain/go-sdk/transaction"
 	"github.com/noah-blockchain/go-sdk/wallet"
 )
+
+var walletNonce uint64 = 0
 
 func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.MultiSendItem, payload string, gasCoin string) error {
 	if len(txs) == 0 {
@@ -19,9 +22,18 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 
 	nodeAPI := api.NewApi(a.cfg.NodeApiURL)
 
-	nonce, err := nodeAPI.Nonce(walletFrom.Address())
-	if err != nil {
-		return err
+	for {
+		nonce, err := nodeAPI.Nonce(walletFrom.Address())
+		if err != nil {
+			return err
+		}
+
+		if nonce > walletNonce {
+			walletNonce = nonce
+			break
+		}
+
+		time.Sleep(3 * time.Second)
 	}
 
 	tx := transaction.NewMultisendData()
@@ -40,7 +52,7 @@ func (a AutoRewards) SendMultiAccounts(walletFrom *wallet.Wallet, txs []models.M
 	}
 
 	finishedTx, err := signedTx.
-		SetNonce(nonce).SetGasPrice(255).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
+		SetNonce(walletNonce).SetGasPrice(255).SetGasCoin(gasCoin).SetPayload([]byte(payload)).Sign(walletFrom.PrivateKey())
 	if err != nil {
 		return err
 	}
