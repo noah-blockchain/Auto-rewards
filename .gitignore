@@ -172,5 +172,5 @@ $RECYCLE.BIN/
 go-sdk
 go.sum
 
-builds
+build
 docker-compose.test.yml

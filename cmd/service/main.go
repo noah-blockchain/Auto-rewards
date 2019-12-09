@@ -60,6 +60,7 @@ func main() {
 	gocron.ChangeLoc(timeZoneMSK)
 
 	autoRewards := app.NewAutoRewards(cfg)
+	fmt.Println(cfg.TimeStart)
 	gocron.Every(1).Day().At(cfg.TimeStart).Do(autoRewards.Task)
 
 	_, nextTime := gocron.NextRun()
