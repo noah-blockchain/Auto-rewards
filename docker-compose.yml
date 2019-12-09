@@ -5,10 +5,10 @@ services:
     build:
       context: .
     environment:
-      TOKEN: NOAH
-      BASE_COIN: NOAH
-      SEED_PHRASE: SEED_PHRASE
-      NODE_API_URL: http://176.9.116.72:8841
       EXPLORER_API_URL: http://176.9.78.13:9050
+      TOKEN: NOAH
+      SEED_PHRASE: SEED
+      BASE_COIN: NOAH
+      NODE_API_URL: http://176.9.116.72:8841
       TIME_ZONE: Europe/Moscow
-      TIME_START: 09:00
+      TIME_START: "13:00"

@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"io/ioutil"
+	"log"
 	"time"
 
 	"github.com/sethgrid/pester"
@@ -16,6 +17,7 @@ func createReq(url string) ([]byte, error) {
 	client.KeepLog = true
 	client.Timeout = 10 * time.Second
 
+	log.Println(url)
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, errors.New(client.LogString())

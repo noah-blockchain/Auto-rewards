@@ -61,6 +61,10 @@ func (a AutoRewards) GetDelegatorsListByNode(pubKey string) (map[string]float64,
 	}
 	log.Println("INFO! Delegator count =", validatorInfo.Result.DelegatorCount)
 
+	if validatorInfo.Result.DelegatorCount == 0 {
+		return map[string]float64{}, nil
+	}
+
 	values := make(map[string]float64, validatorInfo.Result.DelegatorCount)
 	for _, delegator := range validatorInfo.Result.DelegatorList {
 		if delegator.Coin == a.cfg.Token {
@@ -84,6 +88,10 @@ func (a AutoRewards) GetAllDelegators() (map[string]float64, error) {
 	for _, validator := range allValidators.Validators {
 		delegators, err := a.GetDelegatorsListByNode(validator.PubKey)
 		if err != nil {
+			continue
+		}
+
+		if len(delegators) == 0 {
 			continue
 		}
 
@@ -117,10 +125,10 @@ func (a AutoRewards) getAllPayedDelegators() (map[string]float64, error) {
 	return allPayedDelegators, nil
 }
 
-func (a AutoRewards) getTotalDelegatedCoins() (float64, error) {
+func (a AutoRewards) getTotalDelegatedCoins() (float64, map[string]float64, error) {
 	payedDelegatorsList, err := a.getAllPayedDelegators()
 	if err != nil {
-		return 0.0, err
+		return 0.0, nil, err
 	}
 
 	totalDelegatedCoins := 0.0
@@ -128,7 +136,7 @@ func (a AutoRewards) getTotalDelegatedCoins() (float64, error) {
 		totalDelegatedCoins += amount
 	}
 
-	return totalDelegatedCoins, nil
+	return totalDelegatedCoins, payedDelegatorsList, nil
 }
 
 func (a AutoRewards) getWalletBalances(address string) (*models.AddressInfo, error) {
@@ -164,15 +172,15 @@ func (a AutoRewards) getNoahBalance(address string) (float64, error) {
 }
 
 func (a AutoRewards) CreateMultiSendList(walletFrom string, payCoinName string) ([]models.MultiSendItem, error) {
-	totalDelegatedCoins, err := a.getTotalDelegatedCoins()
-	if err != nil || totalDelegatedCoins == 0 {
+	totalDelegatedCoins, payedDelegatedList, err := a.getTotalDelegatedCoins()
+	if err != nil || totalDelegatedCoins == 0 || len(payedDelegatedList) == 0{
 		return nil, err
 	}
 
-	payedDelegatedList, err := a.getAllPayedDelegators()
-	if err != nil {
-		return nil, err
-	}
+	//payedDelegatedList, err := a.getAllPayedDelegators()
+	//if err != nil {
+	//	return nil, err
+	//}
 	log.Println("INFO! Payed Delegated List Count =", len(payedDelegatedList))
 
 	var balanceNoah float64
